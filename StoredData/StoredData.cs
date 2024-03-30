@@ -1,12 +1,8 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Runtime.Remoting.Contexts;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace StoredData
 {
@@ -19,7 +15,6 @@ namespace StoredData
             Character
         }
 
-        [System.Serializable()]
         private class Server
         {
             public Dictionary<string, object> ServerGlobal { get; set; }
@@ -31,27 +26,20 @@ namespace StoredData
             }
         }
 
-        //[System.Serializable()]
-        public class Character
+        private class Character : Dictionary<string, object>
         {
-            public Dictionary<string, object> Settings { get; set; }
-
-            public Character()
-            {
-                Settings = new Dictionary<string, object>();
-            }
-
+            public Character() {}
             public void AddSetting(string key, object value)
             {
-                Settings[key] = value;
+                this[key] = value;
             }
         }
 
-        private class JSONStorage
+        private class JSONRoot
         {
             public Dictionary<string, object> Global { get; set; }
             public Dictionary<string, Server> Servers { get; set; }
-            public JSONStorage()
+            public JSONRoot()
             {
                 Global = new Dictionary<string, object>();
                 Servers = new Dictionary<string, Server>();
@@ -83,11 +71,11 @@ namespace StoredData
             string jsonText = File.ReadAllText(_fileName.FullName);
 
             bool save = false;
-            JSONStorage jsonObj = JsonConvert.DeserializeObject<JSONStorage>(jsonText);
+            JSONRoot jsonObj = JsonConvert.DeserializeObject<JSONRoot>(jsonText);
 
             if (jsonObj == null)
             {
-                jsonObj = new JSONStorage();
+                jsonObj = new JSONRoot();
                 save = true;
             }
 
@@ -110,10 +98,19 @@ namespace StoredData
             }
         }
 
+        public override string ToString()
+        {
+            string jsonText = File.ReadAllText(_fileName.FullName);
+            JSONRoot jsonObj = JsonConvert.DeserializeObject<JSONRoot>(jsonText);
+            if (jsonObj == null) return "";
+
+            return JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
+        }
+
         public void StoreData(object data, string keyName, StoreType storage)
         {
             string jsonText = File.ReadAllText(_fileName.FullName);
-            JSONStorage jsonObj = JsonConvert.DeserializeObject<JSONStorage>(jsonText) ?? throw new Exception("Error reading JSON file");
+            JSONRoot jsonObj = JsonConvert.DeserializeObject<JSONRoot>(jsonText) ?? throw new Exception("Error reading JSON file");
 
             switch (storage)
             {
@@ -132,6 +129,46 @@ namespace StoredData
 
             jsonText = JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
             File.WriteAllText(_fileName.FullName, jsonText);
+        }
+
+        public T GetData<T>(string keyName, StoreType storage)
+        {
+            string jsonText = File.ReadAllText(_fileName.FullName);
+            JSONRoot jsonObj = JsonConvert.DeserializeObject<JSONRoot>(jsonText);
+            if (jsonObj == null) return default;
+
+            object retVal;
+
+            switch (storage)
+            {
+                case StoreType.Global:
+                    if (!jsonObj.Global.ContainsKey(keyName)) return default;
+                    retVal = jsonObj.Global[keyName];
+                    break;
+                case StoreType.Server:
+                    if (!jsonObj.Servers[_serverName].ServerGlobal.ContainsKey(keyName)) return default;
+                    retVal = jsonObj.Servers[_serverName].ServerGlobal[keyName];
+                    break;
+                case StoreType.Character:
+                default:
+                    if (!jsonObj.Servers[_serverName].Characters[_characterName].ContainsKey(keyName)) return default;
+                    retVal = jsonObj.Servers[_serverName].Characters[_characterName][keyName];
+                    break;
+            }
+
+            if (retVal is Newtonsoft.Json.Linq.JObject)
+            {
+                JObject j1 = retVal as JObject;
+                return j1.ToObject<T>();
+            }
+
+            if (retVal is Newtonsoft.Json.Linq.JArray)
+            {
+                JArray j1 = retVal as JArray;
+                return j1.ToObject<T>();
+            }
+
+            return (T)Convert.ChangeType(retVal, typeof(T));
         }
     }
 }
