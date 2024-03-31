@@ -28,7 +28,7 @@ namespace StoredData
 
         private class Character : Dictionary<string, object>
         {
-            public Character() {}
+            public Character() { }
             public void AddSetting(string key, object value)
             {
                 this[key] = value;
@@ -50,6 +50,12 @@ namespace StoredData
         private readonly string _serverName;    // Name of the server
         private readonly string _characterName; // Name of the account
 
+        /// <summary>
+        /// Initializes a new instance of the StoredData class.
+        /// </summary>
+        /// <param name="storedDataFolder">The folder path where the JSON file will be stored.</param>
+        /// <param name="serverName">The name of the server.</param>
+        /// <param name="characterName">The name of the character.</param>
         public StoredData(string storedDataFolder, string serverName, string characterName)
         {
             _fileName = new FileInfo(Path.Combine(storedDataFolder, "StoredData.json"));
@@ -98,6 +104,10 @@ namespace StoredData
             }
         }
 
+        /// <summary>
+        /// Returns a string representation of the JSON data.
+        /// </summary>
+        /// <returns>A string representation of the JSON data.</returns>
         public override string ToString()
         {
             string jsonText = File.ReadAllText(_fileName.FullName);
@@ -107,6 +117,12 @@ namespace StoredData
             return JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
         }
 
+        /// <summary>
+        /// Stores data in the JSON file based on the specified storage type.
+        /// </summary>
+        /// <param name="data">The data to store.</param>
+        /// <param name="keyName">The key name to associate with the data.</param>
+        /// <param name="storage">The storage type (Global, Server, or Character).</param>
         public void StoreData(object data, string keyName, StoreType storage)
         {
             string jsonText = File.ReadAllText(_fileName.FullName);
@@ -131,6 +147,13 @@ namespace StoredData
             File.WriteAllText(_fileName.FullName, jsonText);
         }
 
+        /// <summary>
+        /// Retrieves data from the JSON file based on the specified storage type.
+        /// </summary>
+        /// <typeparam name="T">The type of data to retrieve.</typeparam>
+        /// <param name="keyName">The key name associated with the data.</param>
+        /// <param name="storage">The storage type (Global, Server, or Character).</param>
+        /// <returns>The retrieved data or the default value if keyName doesn't exist.</returns>
         public T GetData<T>(string keyName, StoreType storage)
         {
             string jsonText = File.ReadAllText(_fileName.FullName);
